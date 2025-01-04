@@ -49,16 +49,18 @@ class Simulation:
         self.agents = self.__get_agents()
         # delta_v on grid
 
+
     def __get_agents(self) -> list[Agent]:
         assert self.obstacles is not None
         agents = []
+        grid_cp = self.grid.copy()
         for _ in range(self.num_agents):
             row = random.randint(0, ROWS - 1)
             col = random.randint(0, COLS - 2)
-            while self.grid[row, col] != 0:
+            while grid_cp[row, col] != 0:
                 row = random.randint(0, ROWS - 1)
                 col = random.randint(0, COLS - 2)
-            self.grid[row, col] = 1
+            grid_cp[row, col] = 1
             agents.append(Agent((row, col), 
                                 ((row + 0.5) * GRID_SIZE, (col + 0.5) * GRID_SIZE)))
         return agents
