@@ -39,3 +39,6 @@ yarn-error.log*
 
 # Chakra UI specific
 .chakra/
+
+# venv
+*/.venv/

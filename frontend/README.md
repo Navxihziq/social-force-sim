@@ -1,7 +1,3 @@
-# Social Force Model Simulation
-
-This is a simulation website for the Social Force Model. Here, we have a canvas of size 500 by 400 of agents and obstacles moving to the exit [the green rectangle at the right hand side].
-
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
