@@ -1,5 +1,10 @@
 """FastAPI application module for the Social Force Model Simulation."""
 import uuid
+import logging
+
+
+logger = logging.getLogger("uvicorn")
+
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
@@ -60,19 +65,42 @@ async def websocket_endpoint(websocket: WebSocket):
             if message["type"] == "init":
                 config = SimulationConfig(**message["data"])
                 sim = Simulation(config.numAgents, config.numObstacles, config.state)
-                sim.initialize()
                 active_connections[client_id]["simulation"] = sim
 
                 state = SimulationState(
-                    agents=[SimulationDAO.map_agent_to_dto(agent) for agent in sim.agents],
-                    obstacles=[SimulationDAO.map_obstacle_to_dto(obstacle) for obstacle in sim.obstacles],
+                    agents=[SimulationDAO.map_agent_to_dto(agent) 
+                            for agent in sim.agents],
+                    obstacles=[SimulationDAO.map_obstacle_to_dto(obstacle) 
+                               for obstacle in sim.obstacles],
                     state=config.state
                 )
-                await websocket.send_json(state.model_dump())
-                
+                await websocket.send_json(
+                    {
+                        "type": "simulation_state",
+                        "data": state.model_dump()
+                    }
+                )
+
             elif message["type"] == "step":
-                    sim = active_connections[client_id]["simulation"]
-                    sim.step()
+                sim = active_connections[client_id]["simulation"]
+                sim.step()
+
+            elif message["type"] == "get_path":
+                sim = active_connections.get(client_id, {}).get("simulation")
+                if sim is not None:
+                    await websocket.send_json(
+                        {
+                            "type": "path_image",
+                            "data": sim.get_path_image()
+                        }
+                    )
+                else:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "Simulation not initialized"
+                        }
+                    )
 
     except Exception as e:
         print(e)
