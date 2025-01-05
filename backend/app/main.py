@@ -8,6 +8,8 @@ logger = logging.getLogger("uvicorn")
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from models.sim import Simulation
@@ -26,6 +28,14 @@ class SimulationState(BaseModel):
 
 
 app = FastAPI()
+
+# Add this route before mounting static files
+@app.get("/")
+async def read_root():
+    return FileResponse("./dist/index.html")
+
+# Mount static files for assets only, not at root
+app.mount("/assets", StaticFiles(directory="./dist/assets"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
