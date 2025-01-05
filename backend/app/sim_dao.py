@@ -1,5 +1,4 @@
 from models.sim import Agent as SimAgent, Obstacle as SimObstacle
-from typing import List
 from pydantic import BaseModel
 
 
@@ -10,6 +9,7 @@ class Position(BaseModel):
 class AgentDTO(BaseModel):
     id: str
     position: Position
+    exited: bool
 
 class ObstacleDTO(BaseModel):
     size: tuple[int, int]
@@ -21,9 +21,10 @@ class SimulationDAO:
         return AgentDTO(
             id=agent.id,
             position=Position(
-                x=agent.position[1],  # Convert from (row, col) to (x, y)
-                y=agent.position[0]
-            )
+                x=int(agent.position[1]),  # Convert from (row, col) to (x, y)
+                y=int(agent.position[0])
+            ),
+            exited=agent.exited
         )
 
     @staticmethod

@@ -82,8 +82,32 @@ async def websocket_endpoint(websocket: WebSocket):
                 )
 
             elif message["type"] == "step":
-                sim = active_connections[client_id]["simulation"]
-                sim.step()
+                sim = active_connections.get(client_id, {}).get("simulation")
+                if sim is not None:
+                    sim.step()
+                    state = SimulationState(
+                        agents=[SimulationDAO.map_agent_to_dto(agent) 
+                                for agent in sim.agents],
+                        obstacles=[SimulationDAO.map_obstacle_to_dto(obstacle) 
+                                   for obstacle in sim.obstacles],
+                        state=sim.state
+                    )
+                    await websocket.send_json(
+                        {
+                            "type": "simulation_state",
+                            "data": state.model_dump()
+                        }
+                    )
+                    logger.info(f"simulation state: {sim.state}")
+                    if not sim.state:
+                        await websocket.close()
+                else:
+                    await websocket.send_json(
+                        {
+                            "type": "error",
+                            "message": "Simulation not initialized"
+                        }
+                    )
 
             elif message["type"] == "get_path":
                 sim = active_connections.get(client_id, {}).get("simulation")

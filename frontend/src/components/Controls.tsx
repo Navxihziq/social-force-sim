@@ -1,16 +1,7 @@
 import { Flex, Text, Grid, GridItem, Button } from "@chakra-ui/react";
 import { Slider } from "@components/ui/slider";
+import { Checkbox } from "@components/ui/checkbox";
 import { useState } from "react";
-
-interface ControlsProps {
-  numAgents: number;
-  setNumAgents: (numAgents: number) => void;
-  numObstacles: number;
-  setNumObstacles: (numObstacles: number) => void;
-  agentSpeed: number;
-  setAgentSpeed: (agentSpeed: number) => void;
-  setSimStarted: (simStarted: boolean) => void;
-}
 
 const PropSlider = ({
   title,
@@ -64,14 +55,24 @@ const Buttons = ({
   );
 };
 
+interface ControlsProps {
+  numAgents: number;
+  setNumAgents: (numAgents: number) => void;
+  numObstacles: number;
+  setNumObstacles: (numObstacles: number) => void;
+  setSimStarted: (simStarted: boolean) => void;
+  showPath: boolean;
+  setShowPath: (showPath: boolean) => void;
+}
+
 const Controls = ({
   numAgents,
   setNumAgents,
   numObstacles,
   setNumObstacles,
-  agentSpeed,
-  setAgentSpeed,
   setSimStarted,
+  showPath,
+  setShowPath,
 }: ControlsProps) => {
   return (
     <Grid
@@ -101,13 +102,9 @@ const Controls = ({
         />
       </GridItem>
       <GridItem>
-        <PropSlider
-          title="Agent Speed"
-          value={agentSpeed}
-          setValue={setAgentSpeed}
-          min={1}
-          max={100}
-        />
+        <Checkbox onCheckedChange={() => setShowPath(!showPath)}>
+          Show Path
+        </Checkbox>
       </GridItem>
       <GridItem>
         <Buttons setSimStarted={setSimStarted} />

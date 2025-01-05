@@ -7,40 +7,63 @@ import { useSimulation } from "../hooks/useSimulation";
 const Sim = () => {
   const [numAgents, setNumAgents] = useState(10);
   const [numObstacles, setNumObstacles] = useState(1);
-  const [agentSpeed, setAgentSpeed] = useState(20);
   const [simStarted, setSimStarted] = useState(false);
 
-  const { simulationState, initializeSimulation, stepSimulation } =
-    useSimulation();
+  const {
+    simulationState,
+    pathImage,
+    initializeSimulation,
+    stepSimulation,
+    getPath,
+  } = useSimulation();
 
-  // Initialize simulation when configuration changes
   useEffect(() => {
     initializeSimulation({
       numAgents,
       numObstacles,
-      state: simStarted,
+      state: true,
     });
   }, [numAgents, numObstacles]);
 
   useEffect(() => {
-    if (simStarted) {
-      stepSimulation();
+    let interval: NodeJS.Timeout;
+    if (simStarted && simulationState.state) {
+      interval = setInterval(() => {
+        stepSimulation();
+      }, 1000);
     }
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
   }, [simStarted]);
+
+  const [showPath, setShowPath] = useState(false);
+
+  useEffect(() => {
+    if (showPath) {
+      getPath();
+    }
+  }, [showPath, numAgents, numObstacles]);
 
   return (
     <Flex direction="column" align="center" justify="between">
       <Container width="100%" padding={0} border="1px solid black">
-        <Canvas simulationState={simulationState} />
+        <Canvas
+          simulationState={simulationState}
+          pathImage={pathImage}
+          showPath={showPath}
+        />
       </Container>
       <Controls
         numAgents={numAgents}
         setNumAgents={setNumAgents}
         numObstacles={numObstacles}
         setNumObstacles={setNumObstacles}
-        agentSpeed={agentSpeed}
-        setAgentSpeed={setAgentSpeed}
         setSimStarted={setSimStarted}
+        showPath={showPath}
+        setShowPath={setShowPath}
       />
     </Flex>
   );
