@@ -1,9 +1,8 @@
 import random
 import numpy as np
-from numba import prange
 import matplotlib.pyplot as plt
 
-from .utils import grid_bfs
+from .utils import grid_bfs, wall_distance_grid, obstacle_distance_grid, outofbounds
 
 import logging
 logger = logging.getLogger('uvicorn')
@@ -18,10 +17,11 @@ AGENT_RADIUS = 5
 RANDOM_SEED = 42
 
 
-A = 20
-B = -0.09
+L_SCALE = 8e-2  # grid unit to metric unit [meter]
+DELTA_T = 0.005  # time step [second]
 
-L_SCALE = 8e-2
+A = 2 / L_SCALE
+B = -0.3 / L_SCALE
 
 
 class Agent:
@@ -43,10 +43,78 @@ class Agent:
 
         # length measures are all in grid units
         self.r = 0.4 / L_SCALE
-        self.v = np.array([0.0, 0.0], dtype=np.float32)
-        self.dv = np.array([1, 1], dtype=np.float32)/L_SCALE
         self.m = 60 # [kg]
 
+        self.v_des = np.array([1.4/L_SCALE, 1.4/L_SCALE], dtype=np.float32)
+        self.v_t = np.array([0.0, 0.0], dtype=np.float32)
+
+    def fij(self, agent_j):
+        d_ij = np.linalg.norm(self.position - agent_j.position)
+        if d_ij < 1:
+            d_ij = 1
+        return A * np.exp((d_ij - (self.r + agent_j.r)) / B) * (self.position - agent_j.position) / d_ij
+
+    def fiw(self, wall_distance_grid: np.ndarray, 
+            wall_direction_grid: np.ndarray,
+            obstacle_distance_grid: np.ndarray,
+            obstacle_direction_grid: np.ndarray) -> np.ndarray:
+        """Calculate the force exerted by walls and obstacles on an agent.
+
+        Args:
+            wall_distance_grid (np.ndarray): distance to walls. shape: (4, grid.shape[0], grid.shape[1])
+            wall_direction_grid (np.ndarray): direction to walls. shape: (4, 2, grid.shape[0], grid.shape[1])
+            obstacle_distance_grid (np.ndarray): distance to obstacles. shape: (4, grid.shape[0], grid.shape[1])
+            obstacle_direction_grid (np.ndarray): direction to obstacles. shape: (4, 2, grid.shape[0], grid.shape[1])
+
+        Returns:
+            np.ndarray: force exerted by walls and obstacles on an agent. shape: (2,)
+        """
+        i, j = self.grid_position
+        f_iwalls = (A * np.exp((wall_distance_grid[:, i, j] - self.r) / B))
+        f_iwalls = f_iwalls[:, np.newaxis] * wall_direction_grid[:, :, i, j] # shape: (4, 2)
+        f_iwalls = f_iwalls.sum(axis=0) # shape: (2,)
+
+        f_iobstacles = (A * np.exp((obstacle_distance_grid[:, i, j] - self.r) / B))
+        # shape: (obstacles, 2)
+        f_iobstacles = f_iobstacles[:, np.newaxis] * obstacle_direction_grid[:, :, i, j] 
+        f_iobstacles = f_iobstacles.sum(axis=0) # shape: (2,)
+
+        return f_iwalls + f_iobstacles
+
+
+    def step(self, nearest_neighbors: list, 
+             path_dir_grid: np.ndarray,
+             wall_distance_grid: np.ndarray, 
+             wall_direction_grid: np.ndarray,
+             obstacle_distance_grid: np.ndarray,
+             obstacle_direction_grid: np.ndarray):
+        i, j = self.grid_position
+        f_des = self.v_des * path_dir_grid[:, i, j]
+        fij_sum = np.array([0.0, 0.0])
+        for agent_j in nearest_neighbors:
+            fij_sum += self.fij(agent_j)
+
+        fiw_sum = self.fiw(wall_distance_grid, 
+                           wall_direction_grid, 
+                           obstacle_distance_grid, 
+                           obstacle_direction_grid)
+        
+        f_sum = f_des + fij_sum + fiw_sum
+
+        new_pos = self.position + self.v_t * DELTA_T
+        new_grid_pos = new_pos // GRID_SIZE
+
+        if outofbounds(new_grid_pos, path_dir_grid.shape[1:]):
+            # snap to the nearest boundary
+            new_grid_pos[0] = np.clip(new_grid_pos[0], 0, path_dir_grid.shape[1] - 1)
+            new_grid_pos[1] = np.clip(new_grid_pos[1], 0, path_dir_grid.shape[2] - 1)
+            new_pos = (new_grid_pos + 0.5) * GRID_SIZE
+
+        new_v_t = self.v_t + (f_sum/self.m) * DELTA_T
+
+        self.position = new_pos
+        self.grid_position = np.array(new_grid_pos, dtype=np.int32)
+        self.v_t = new_v_t
 
 
 class Obstacle:
@@ -56,6 +124,10 @@ class Obstacle:
         self.size = size
         self.position = position
         self.centroid = (position[0] + size[0]//2, position[1] + size[1]//2)
+        self.x0 = position[0]
+        self.y0 = position[1]
+        self.x1 = position[0] + size[0]
+        self.y1 = position[1] + size[1]
 
         Obstacle._instance_count += 1
 
@@ -68,10 +140,15 @@ class Simulation:
 
         self.agents = []
         self.obstacles = []
+
         self.grid = np.zeros((ROWS, COLS), dtype=np.int8)
         self.grid[14:25, -1] = 1    # exit
         self.path_dir_grid = None
 
+        self.wall_distance_grid = None
+        self.wall_direction_grid = None
+        self.obstacle_distance_grid = None
+        self.obstacle_direction_grid = None
         self.initialize()
 
     def initialize(self):
@@ -80,124 +157,29 @@ class Simulation:
         # agents
         self.agents = self.__get_agents()
         # delta_v on grid
-        self.path_dir_grid = grid_bfs(self.grid) * 1.4
-
+        self.path_dir_grid = grid_bfs(self.grid)
+        # another grid for distance to walls and obstacles
+        self.wall_distance_grid, self.wall_direction_grid = wall_distance_grid(self.grid)
+        self.obstacle_distance_grid, self.obstacle_direction_grid = obstacle_distance_grid(self.grid, self.obstacles)
+        logger.info(f"distance_grid: {self.obstacle_direction_grid[0,:, 0, 0]}")
     
     def step(self):
         for i in range(len(self.agents)):
             # note: please first convert all grid units to metric units
             agent = self.agents[i]
-            # desired 
-            d_v_desired = self.path_dir_grid[:, agent.grid_position[0], agent.grid_position[1]] * agent.dv
-
-            # TODO: kd-tree: find top 8 nearest neighbors
-            fij_sum = np.array([0.0, 0.0])
-            for j in range(len(self.agents)):
-                if i==j:
-                    continue
-                agent_j = self.agents[j]
-                if agent_j.exited:
-                    continue
-
-                d_ij = np.linalg.norm(np.array(agent.position) - np.array(agent_j.position))
-                if d_ij >= 1.4 / L_SCALE:
-                    continue
-
-                if d_ij < 0.1 / L_SCALE:
-                    d_ij = 0.5 / L_SCALE
-                fij = A * np.exp((d_ij - (agent.r + agent_j.r)) / B)
-                fij_sum += fij * (agent.position - agent_j.position) /(d_ij)
-            # fiw
-            # walls
-            def fi_walls(agent: Agent)->np.ndarray:
-                THRESHOLD = 60/L_SCALE
-                fiw_sum = np.array([0.0, 0.0])
-                # left wall
-                d = agent.position[1]
-                if d < THRESHOLD:
-                    fi_w = A * np.exp((d-agent.r) / B)
-                    fiw_sum[1] += fi_w
-                # right wall
-                d = (WIDTH - agent.position[1])
-                if d < THRESHOLD:
-                    fi_w = A * np.exp((d-agent.r) / B)
-                    fiw_sum[1] -= fi_w
-                # top wall
-                d = agent.position[0]
-                if d < THRESHOLD:
-                    fi_w = A * np.exp((d-agent.r) / B)
-                    fiw_sum[0] += fi_w
-                # bottom wall
-                d = (HEIGHT - agent.position[0])
-                if d < THRESHOLD:
-                    fi_w = A * np.exp((d-agent.r) / B)
-                    fiw_sum[0] -= fi_w
-
-                return fiw_sum
-            
-            fiw_sum = fi_walls(agent)
-            # fi_obstacles
-            def fi_obstacles(agent: Agent)->np.ndarray:
-                """Calculate the force exerted by obstacles on an agent.
-                  
-                  The distance is calculated from the centroid of the obstacle.
-                """
-                fi_o_sum = np.array([0.0, 0.0])
-                for obstacle in self.obstacles:
-                    # Find closest corner point of obstacle
-                    corners = [
-                        (obstacle.position[0], obstacle.position[1]),  
-                        # top-left
-                        (obstacle.position[0] + obstacle.size[0], obstacle.position[1]),
-                        # top-right 
-                        (obstacle.position[0], obstacle.position[1] + obstacle.size[1]),
-                        # bottom-left
-                        (obstacle.position[0] + obstacle.size[0], 
-                         obstacle.position[1] + obstacle.size[1])
-                        # bottom-right
-                    ]
-                    d = min(np.linalg.norm(agent.position - np.array(corner)) 
-                            for corner in corners)
-                    if d < 120/L_SCALE:
-                        fi_o = A * np.exp((d-agent.r) / B)
-                        fi_o_sum += fi_o * (agent.position - obstacle.centroid) / d
-                return fi_o_sum
-            
-            fio_sum = fi_obstacles(agent)
-            fiw_sum += fio_sum
-
-            f_sum = fij_sum + fiw_sum
-            d_v_f = f_sum / agent.m
-            d_v = d_v_desired + d_v_f
-
-            agent.v = agent.v + d_v
-
-            # Calculate new position first without modifying agent state
-            new_position = agent.position + agent.v
-            new_grid_position = new_position // GRID_SIZE
-
-            # bounds correction
-            if new_grid_position[0] < 0 or new_grid_position[0] >= ROWS or \
-               new_grid_position[1] < 0 or new_grid_position[1] >= COLS:
-                new_grid_position = np.array([
-                    int(max(0, min(new_grid_position[0], ROWS-1))),
-                    int(max(0, min(new_grid_position[1], COLS-1)))
-                ])
-                new_position = np.floor((new_grid_position + 0.5) * GRID_SIZE)
-            
-            # exit check
-            if self.grid[int(new_grid_position[0]), int(new_grid_position[1])] == 1:
-                agent.exited = True
-                logger.info(f"agent {agent.id} exited")
+            if agent.exited:
                 continue
 
-            exit_count = sum(agent.exited for agent in self.agents)
-            if exit_count == len(self.agents):
-                self.state = False
-                return
-
-            agent.grid_position = new_grid_position.astype(np.int32)
-            agent.position = new_position.astype(np.int32)
+            agent.step(self.agents, 
+                       self.path_dir_grid,
+                       self.wall_distance_grid, 
+                       self.wall_direction_grid, 
+                       self.obstacle_distance_grid, 
+                       self.obstacle_direction_grid)
+            
+            if self.grid[int(self.agents[i].grid_position[0]), 
+                         int(self.agents[i].grid_position[1])] == 1:
+                self.agents[i].exited = True
 
 
     def get_path_image(self) -> list[int]:
@@ -243,7 +225,7 @@ class Simulation:
                         a.position[1] > b.position[1] + b.size[1])
         obstacles = []
         while len(obstacles) < self.num_obstacles:
-            size=(random.randint(2, 10) * 10, random.randint(5, 10) * 10)
+            size=(random.randint(10, 20) * 10, random.randint(10, 20) * 10)
             obstacle = Obstacle(
                 size=size,
                     position=(

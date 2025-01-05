@@ -1,7 +1,7 @@
 """FastAPI application module for the Social Force Model Simulation."""
 import uuid
 import logging
-
+import uvicorn
 
 logger = logging.getLogger("uvicorn")
 
@@ -12,8 +12,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
-from models.sim import Simulation
-from sim_dao import AgentDTO, ObstacleDTO, SimulationDAO
+from app.models.sim import Simulation
+from app.sim_dao import AgentDTO, ObstacleDTO, SimulationDAO
 
 class SimulationConfig(BaseModel):
     numAgents: int
@@ -32,10 +32,10 @@ app = FastAPI()
 # Add this route before mounting static files
 @app.get("/")
 async def read_root():
-    return FileResponse("./dist/index.html")
+    return FileResponse("./app/dist/index.html")
 
 # Mount static files for assets only, not at root
-app.mount("/assets", StaticFiles(directory="./dist/assets"), name="static")
+app.mount("/assets", StaticFiles(directory="./app/dist/assets"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -108,7 +108,6 @@ async def websocket_endpoint(websocket: WebSocket):
                             "data": state.model_dump()
                         }
                     )
-                    logger.info(f"simulation state: {sim.state}")
                     if not sim.state:
                         await websocket.close()
                 else:
@@ -140,3 +139,7 @@ async def websocket_endpoint(websocket: WebSocket):
         print(e)
     finally:
         del active_connections[client_id]
+
+
+if __name__ == "__main__":
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)

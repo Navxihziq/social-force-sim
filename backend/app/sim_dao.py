@@ -1,4 +1,4 @@
-from models.sim import Agent as SimAgent, Obstacle as SimObstacle
+from app.models.sim import Agent as SimAgent, Obstacle as SimObstacle
 from pydantic import BaseModel
 
 
