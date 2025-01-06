@@ -30,7 +30,7 @@ const Sim = () => {
     if (simStarted && simulationState.state) {
       interval = setInterval(() => {
         stepSimulation();
-      }, 1000);
+      }, 0.1);
     }
     return () => {
       if (interval) {
