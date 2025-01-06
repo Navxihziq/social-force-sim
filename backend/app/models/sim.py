@@ -161,7 +161,7 @@ class Simulation:
         # another grid for distance to walls and obstacles
         self.wall_distance_grid, self.wall_direction_grid = wall_distance_grid(self.grid)
         self.obstacle_distance_grid, self.obstacle_direction_grid = obstacle_distance_grid(self.grid, self.obstacles)
-        logger.info(f"distance_grid: {self.obstacle_direction_grid[0,:, 0, 0]}")
+        logger.info(f"direction_grid: {self.obstacle_direction_grid[0,:, 0, 0]}")
     
     def step(self):
         for i in range(len(self.agents)):
