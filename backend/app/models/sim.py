@@ -225,7 +225,7 @@ class Simulation:
                         a.position[1] > b.position[1] + b.size[1])
         obstacles = []
         while len(obstacles) < self.num_obstacles:
-            size=(random.randint(10, 20) * 10, random.randint(10, 20) * 10)
+            size=(random.randint(7, 17) * 10, random.randint(7, 17) * 10)
             obstacle = Obstacle(
                 size=size,
                     position=(

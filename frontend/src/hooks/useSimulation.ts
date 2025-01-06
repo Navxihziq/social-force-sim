@@ -30,7 +30,7 @@ interface SimulationConfig {
 
 export type { SimulationState, SimulationConfig, Agent, Obstacle };
 
-const WS_BASE_URL = "ws://localhost:8000/ws"; // WebSocket URL
+const WS_BASE_URL = "ws://0.0.0.0:8000/ws";
 
 export const useSimulation = () => {
   const [simulationState, setSimulationState] = useState<SimulationState>({
