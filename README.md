@@ -13,8 +13,19 @@ The project is built with [FastAPI](https://fastapi.tiangolo.com/) and [React](h
 ## Run it locally
 
 ```bash
-cd backend
+git clone https://github.com/Navxihziq/social-force-sim.git
+cd social-force-sim/backend
+```
+
+```bash
+# create and activate virtual environment
+python -m venv .venv
+source venv/bin/activate  # On Windows, use: venv\Scripts\activate
+
+# install dependencies
 pip install -r requirements.txt
+
+# run the server
 uvicorn main:app --reload --port 8000 --host 0.0.0.0
 ```
 
