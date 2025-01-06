@@ -18,7 +18,7 @@ RANDOM_SEED = 42
 
 
 L_SCALE = 8e-2  # grid unit to metric unit [meter]
-DELTA_T = 0.005  # time step [second]
+DELTA_T = 0.001  # time step [second]
 
 A = 2 / L_SCALE
 B = -0.3 / L_SCALE
@@ -44,6 +44,8 @@ class Agent:
         # length measures are all in grid units
         self.r = 0.4 / L_SCALE
         self.m = 60 # [kg]
+
+        self.tau = 0.5
 
         self.v_des = np.array([1.4/L_SCALE, 1.4/L_SCALE], dtype=np.float32)
         self.v_t = np.array([0.0, 0.0], dtype=np.float32)
@@ -89,7 +91,7 @@ class Agent:
              obstacle_distance_grid: np.ndarray,
              obstacle_direction_grid: np.ndarray):
         i, j = self.grid_position
-        f_des = self.v_des * path_dir_grid[:, i, j]
+        f_des = (self.v_des * path_dir_grid[:, i, j] - self.v_t) * self.m / self.tau
         fij_sum = np.array([0.0, 0.0])
         for agent_j in nearest_neighbors:
             fij_sum += self.fij(agent_j)

@@ -25,18 +25,30 @@ const Sim = () => {
     });
   }, [numAgents, numObstacles]);
 
+  // useEffect(() => {
+  //   let interval: NodeJS.Timeout;
+  //   if (simStarted && simulationState.state) {
+  //     interval = setInterval(() => {
+  //       for (let i = 0; i < 5; i++) {
+  //         stepSimulation();
+  //       }
+  //     }, 0.1);
+  //   }
+  //   return () => {
+  //     if (interval) {
+  //       clearInterval(interval);
+  //     }
+  //   };
+  // }, [simStarted]);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (simStarted && simulationState.state) {
-      interval = setInterval(() => {
+    const animate = () => {
+      for (let i = 0; i < 10; i++) {
         stepSimulation();
-      }, 0.1);
-    }
-    return () => {
-      if (interval) {
-        clearInterval(interval);
       }
     };
+    const interval = setInterval(animate, 0.1);
+    return () => clearInterval(interval);
   }, [simStarted]);
 
   const [showPath, setShowPath] = useState(false);

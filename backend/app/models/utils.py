@@ -117,25 +117,30 @@ def wall_distance_grid(grid: np.ndarray)->tuple[np.ndarray, np.ndarray]:
             # left wall
             d = (j)*10
             if d <= 5:
-                d=5
+                d=0.1
             distance_grid[0, i, j] = d
             direction_grid[0, :, i, j] = np.array([0, 1])
             # top wall
             d = (i)*10
             if d <= 5:
-                d=5
+                d=0.1
             distance_grid[1, i, j] = d
             direction_grid[1, :, i, j] = np.array([1, 0])
             # right wall
-            d = (grid.shape[1]-j-1)*10
-            if d <= 5:
-                d=5
+
+            if 14<=j<=25:
+                d=1000
+            else:
+                d = (grid.shape[1]-j-1)*10
+                if d <= 5:
+                    d=0.1
+                    
             distance_grid[2, i, j] = d
             direction_grid[2, :, i, j] = np.array([0, -1])
             # bottom wall
             d = (grid.shape[0]-i-1)*10
             if d <= 5:
-                d=5
+                d=0.1
             distance_grid[3, i, j] = d
             direction_grid[3, :, i, j] = np.array([-1, 0])
 

@@ -34,6 +34,7 @@ const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 const wsHost = window.location.host;
 
 const WS_BASE_URL = `${wsProtocol}//${wsHost}/ws`;
+// const WS_BASE_URL_LOCAL = "ws://localhost:8000/ws";
 
 export const useSimulation = () => {
   const [simulationState, setSimulationState] = useState<SimulationState>({
