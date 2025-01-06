@@ -2,9 +2,11 @@
 
 <img src="./assets/demo.gif" alt="simulation demo">
 
-This is an [extremely] simple yet interesting implementation of the original social force model proposed by Helbing and Molnar in 1995.
+This is an [extremely] simple yet interesting implementation of the original social force model proposed by Helbing and Molnar in 1998.
 
-After setting parameters and clicking "Start", the simulation begins. The obstacles' sizes/locations and agents' initial positions are randomly generated. Please note that crash detection between agents and obstacles has not been implemented yet, so you can see some ranbunctious agents are roaming into the obstacles [and each others].
+The project is live at: [https://social-force-sim.onrender.com/](https://social-force-sim.onrender.com/). The server is hosted on a free tier Render instance, so you should expect to experience some (or dramatic) lag.
+
+After setting parameters and clicking "Start", the simulation begins. The obstacles' sizes/locations and agents' initial positions are randomly generated. Please note that crash detection between agents and obstacles has not been implemented yet, so you can see some _ranbunctious_ agents are roaming into the obstacles [and each others].
 
 The project is built with [FastAPI](https://fastapi.tiangolo.com/) and [React](https://react.dev/) + [Vite](https://vitejs.dev/).
 
