@@ -30,7 +30,10 @@ interface SimulationConfig {
 
 export type { SimulationState, SimulationConfig, Agent, Obstacle };
 
-const WS_BASE_URL = "ws://0.0.0.0:8000/ws";
+const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+const wsHost = window.location.host;
+
+const WS_BASE_URL = `${wsProtocol}//${wsHost}/ws`;
 
 export const useSimulation = () => {
   const [simulationState, setSimulationState] = useState<SimulationState>({
